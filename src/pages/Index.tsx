@@ -8,7 +8,11 @@ const Index = () => {
   const [faceData, setFaceData] = useState({
     isBlinking: false,
     headPoseValid: false,
-    landmarks: []
+    landmarks: [],
+    isSmiling: false,
+    eyeGazeDirection: 'unknown',
+    faceDistance: 'unknown',
+    expressionConfidence: 0
   });
 
   const handleFaceData = (data: typeof faceData) => {

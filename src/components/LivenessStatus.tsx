@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, AlertTriangle, Eye, RotateCcw } from 'lucide-react';
+import { Shield, AlertTriangle, Eye, RotateCcw, Smile, Focus, Gauge } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 interface LivenessStatusProps {
@@ -7,6 +7,10 @@ interface LivenessStatusProps {
     isBlinking: boolean;
     headPoseValid: boolean;
     landmarks: any[];
+    isSmiling: boolean;
+    eyeGazeDirection: string;
+    faceDistance: string;
+    expressionConfidence: number;
   };
 }
 
@@ -29,16 +33,25 @@ export const LivenessStatus: React.FC<LivenessStatusProps> = ({ faceData }) => {
     }
   }, [faceData.isBlinking, faceData.landmarks.length]); // Removed lastBlinkTime dependency
 
-  // Calculate liveness status separately
+  // Enhanced liveness calculation with multiple factors
   useEffect(() => {
     const hasFaceDetection = faceData.landmarks.length > 0;
     const hasValidHeadPose = faceData.headPoseValid;
     const hasRecentBlinks = blinkHistory.slice(-5).some(blink => blink);
     const hasEnoughBlinks = blinkCount >= 2;
+    const hasGoodDistance = faceData.faceDistance === 'optimal' || faceData.faceDistance === 'close';
+    const hasHighConfidence = faceData.expressionConfidence > 0.7;
+    const hasCenterGaze = faceData.eyeGazeDirection === 'center';
 
-    const realUser = hasFaceDetection && hasValidHeadPose && (hasRecentBlinks || hasEnoughBlinks);
+    // More sophisticated liveness validation
+    const realUser = hasFaceDetection && 
+                    hasValidHeadPose && 
+                    (hasRecentBlinks || hasEnoughBlinks) && 
+                    hasGoodDistance && 
+                    hasHighConfidence &&
+                    hasCenterGaze;
     setIsRealUser(realUser);
-  }, [faceData.landmarks.length, faceData.headPoseValid, blinkHistory, blinkCount]);
+  }, [faceData.landmarks.length, faceData.headPoseValid, blinkHistory, blinkCount, faceData.faceDistance, faceData.expressionConfidence, faceData.eyeGazeDirection]);
 
   const resetDetection = () => {
     setBlinkHistory([]);
@@ -69,8 +82,8 @@ export const LivenessStatus: React.FC<LivenessStatusProps> = ({ faceData }) => {
         </div>
       </Card>
 
-      {/* Detection Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Enhanced Detection Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="p-4">
           <div className="flex items-center space-x-3">
             <Eye className={`w-6 h-6 ${faceData.landmarks.length > 0 ? 'text-success' : 'text-muted-foreground'}`} />
@@ -90,6 +103,54 @@ export const LivenessStatus: React.FC<LivenessStatusProps> = ({ faceData }) => {
               <p className="font-medium">Head Pose</p>
               <p className="text-sm text-muted-foreground">
                 {faceData.headPoseValid ? 'Frontal' : 'Turn to face camera'}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center space-x-3">
+            <Smile className={`w-6 h-6 ${faceData.isSmiling ? 'text-success' : 'text-muted-foreground'}`} />
+            <div>
+              <p className="font-medium">Expression</p>
+              <p className="text-sm text-muted-foreground">
+                {faceData.isSmiling ? 'Smiling' : 'Neutral'}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center space-x-3">
+            <Focus className={`w-6 h-6 ${faceData.eyeGazeDirection === 'center' ? 'text-success' : 'text-muted-foreground'}`} />
+            <div>
+              <p className="font-medium">Eye Gaze</p>
+              <p className="text-sm text-muted-foreground">
+                Looking {faceData.eyeGazeDirection}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center space-x-3">
+            <Gauge className={`w-6 h-6 ${faceData.faceDistance === 'optimal' ? 'text-success' : faceData.faceDistance === 'close' ? 'text-yellow-500' : 'text-muted-foreground'}`} />
+            <div>
+              <p className="font-medium">Distance</p>
+              <p className="text-sm text-muted-foreground">
+                {faceData.faceDistance === 'optimal' ? 'Perfect' : faceData.faceDistance === 'close' ? 'Too close' : faceData.faceDistance === 'far' ? 'Too far' : 'Unknown'}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center space-x-3">
+            <div className={`w-6 h-6 rounded-full ${faceData.expressionConfidence > 0.8 ? 'bg-success' : faceData.expressionConfidence > 0.5 ? 'bg-yellow-500' : 'bg-muted'}`} />
+            <div>
+              <p className="font-medium">Confidence</p>
+              <p className="text-sm text-muted-foreground">
+                {Math.round(faceData.expressionConfidence * 100)}%
               </p>
             </div>
           </div>
@@ -120,14 +181,16 @@ export const LivenessStatus: React.FC<LivenessStatusProps> = ({ faceData }) => {
         Reset Detection
       </button>
 
-      {/* Instructions */}
+      {/* Enhanced Instructions */}
       <Card className="p-4 bg-muted/50">
-        <h3 className="font-medium mb-2">Instructions</h3>
+        <h3 className="font-medium mb-2">Enhanced Liveness Detection</h3>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• Position your face in the center of the camera</li>
-          <li>• Look directly at the camera</li>
-          <li>• Blink naturally a few times</li>
-          <li>• Keep your head relatively still</li>
+          <li>• Position your face in the center at optimal distance</li>
+          <li>• Look directly at the camera (center gaze)</li>
+          <li>• Blink naturally 2-3 times</li>
+          <li>• Keep your head frontal and still</li>
+          <li>• Maintain good lighting and clear visibility</li>
+          <li>• System analyzes: blinking, gaze, distance, expressions</li>
         </ul>
       </Card>
     </div>

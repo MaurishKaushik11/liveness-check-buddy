@@ -7,6 +7,10 @@ interface CameraProps {
     isBlinking: boolean;
     headPoseValid: boolean;
     landmarks: any[];
+    isSmiling: boolean;
+    eyeGazeDirection: string;
+    faceDistance: string;
+    expressionConfidence: number;
   }) => void;
 }
 
@@ -58,6 +62,67 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
     return noseToEyeRatio < 0.3; // Threshold for frontal face
   };
 
+  // Smile detection using mouth landmarks
+  const detectSmile = (landmarks: any[]) => {
+    if (landmarks.length === 0) return false;
+    
+    // Key mouth landmarks
+    const leftMouth = landmarks[61]; // Left corner
+    const rightMouth = landmarks[291]; // Right corner
+    const topLip = landmarks[13]; // Top lip center
+    const bottomLip = landmarks[14]; // Bottom lip center
+    
+    // Calculate mouth width and height ratios
+    const mouthWidth = Math.abs(rightMouth.x - leftMouth.x);
+    const mouthHeight = Math.abs(bottomLip.y - topLip.y);
+    const ratio = mouthWidth / mouthHeight;
+    
+    // Smile detection based on mouth curvature
+    return ratio > 3.0; // Threshold for smile detection
+  };
+
+  // Eye gaze direction estimation
+  const calculateGazeDirection = (landmarks: any[]) => {
+    if (landmarks.length === 0) return 'unknown';
+    
+    const leftEyeCenter = landmarks[468]; // Left eye center
+    const rightEyeCenter = landmarks[473]; // Right eye center
+    const noseTip = landmarks[1];
+    
+    // Simple gaze direction based on eye positioning
+    const eyeCenterX = (leftEyeCenter.x + rightEyeCenter.x) / 2;
+    const gazeOffset = Math.abs(eyeCenterX - noseTip.x);
+    
+    if (gazeOffset < 0.02) return 'center';
+    return eyeCenterX > noseTip.x ? 'right' : 'left';
+  };
+
+  // Face distance estimation
+  const calculateFaceDistance = (landmarks: any[], canvasWidth: number) => {
+    if (landmarks.length === 0) return 'unknown';
+    
+    const leftEye = landmarks[33];
+    const rightEye = landmarks[263];
+    const eyeDistance = Math.abs(rightEye.x - leftEye.x) * canvasWidth;
+    
+    // Estimate distance based on eye separation
+    if (eyeDistance > 120) return 'close';
+    if (eyeDistance > 80) return 'optimal';
+    return 'far';
+  };
+
+  // Expression confidence calculation
+  const calculateExpressionConfidence = (landmarks: any[], isBlinking: boolean, headPoseValid: boolean, isSmiling: boolean) => {
+    if (landmarks.length === 0) return 0;
+    
+    let confidence = 0.4; // Base confidence for face detection
+    if (headPoseValid) confidence += 0.3;
+    if (isBlinking) confidence += 0.2;
+    if (isSmiling) confidence += 0.1;
+    
+    return Math.min(confidence, 1.0);
+  };
+
   useEffect(() => {
     const initializeCamera = async () => {
       try {
@@ -70,16 +135,21 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
 
         faceMesh.setOptions({
           maxNumFaces: 1,
-          refineLandmarks: false, // Disable refined landmarks to reduce load
-          minDetectionConfidence: 0.7,
-          minTrackingConfidence: 0.5
+          refineLandmarks: true, // Enable for better accuracy
+          minDetectionConfidence: 0.8,
+          minTrackingConfidence: 0.7,
+          selfieMode: true
         });
 
         let isProcessing = false;
+        let lastProcessTime = 0;
+        const PROCESS_INTERVAL = 50; // Process every 50ms for better performance
 
         faceMesh.onResults((results) => {
-          if (isProcessing) return;
+          const now = Date.now();
+          if (isProcessing || now - lastProcessTime < PROCESS_INTERVAL) return;
           isProcessing = true;
+          lastProcessTime = now;
 
           const canvas = canvasRef.current;
           const video = videoRef.current;
@@ -142,19 +212,33 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
                 
                 // Head pose validation
                 const headPoseValid = calculateHeadPose(landmarks);
+                
+                // Additional liveness features
+                const isSmiling = detectSmile(landmarks);
+                const eyeGazeDirection = calculateGazeDirection(landmarks);
+                const faceDistance = calculateFaceDistance(landmarks, canvas.width);
+                const expressionConfidence = calculateExpressionConfidence(landmarks, isBlinking, headPoseValid, isSmiling);
 
                 // Send face data to parent component
                 onFaceData({
                   isBlinking,
                   headPoseValid,
-                  landmarks: landmarks
+                  landmarks: landmarks,
+                  isSmiling,
+                  eyeGazeDirection,
+                  faceDistance,
+                  expressionConfidence
                 });
               } else {
                 // No face detected
                 onFaceData({
                   isBlinking: false,
                   headPoseValid: false,
-                  landmarks: []
+                  landmarks: [],
+                  isSmiling: false,
+                  eyeGazeDirection: 'unknown',
+                  faceDistance: 'unknown',
+                  expressionConfidence: 0
                 });
               }
             }
