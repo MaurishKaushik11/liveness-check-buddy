@@ -61,7 +61,7 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
   useEffect(() => {
     const initializeCamera = async () => {
       try {
-        // Initialize MediaPipe Face Mesh
+        // Initialize MediaPipe Face Mesh with proper error handling
         const faceMesh = new FaceMesh({
           locateFile: (file) => {
             return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
@@ -70,12 +70,17 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
 
         faceMesh.setOptions({
           maxNumFaces: 1,
-          refineLandmarks: true,
-          minDetectionConfidence: 0.5,
+          refineLandmarks: false, // Disable refined landmarks to reduce load
+          minDetectionConfidence: 0.7,
           minTrackingConfidence: 0.5
         });
 
+        let isProcessing = false;
+
         faceMesh.onResults((results) => {
+          if (isProcessing) return;
+          isProcessing = true;
+
           const canvas = canvasRef.current;
           const video = videoRef.current;
           
@@ -91,9 +96,11 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
               if (results.multiFaceLandmarks && results.multiFaceLandmarks[0]) {
                 const landmarks = results.multiFaceLandmarks[0];
                 
-                // Draw face landmarks
+                // Draw face landmarks (reduced for performance)
                 ctx.fillStyle = '#00FFFF';
-                landmarks.forEach((landmark: any) => {
+                ctx.globalAlpha = 0.8;
+                for (let i = 0; i < landmarks.length; i += 3) { // Draw fewer points
+                  const landmark = landmarks[i];
                   ctx.beginPath();
                   ctx.arc(
                     landmark.x * canvas.width,
@@ -103,25 +110,26 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
                     2 * Math.PI
                   );
                   ctx.fill();
-                });
+                }
+                ctx.globalAlpha = 1.0;
 
-                // Eye landmarks for blink detection
+                // Simplified eye landmarks for blink detection
                 const leftEyeLandmarks = [
                   [landmarks[33].x * canvas.width, landmarks[33].y * canvas.height],
-                  [landmarks[7].x * canvas.width, landmarks[7].y * canvas.height],
-                  [landmarks[163].x * canvas.width, landmarks[163].y * canvas.height],
-                  [landmarks[144].x * canvas.width, landmarks[144].y * canvas.height],
-                  [landmarks[145].x * canvas.width, landmarks[145].y * canvas.height],
-                  [landmarks[153].x * canvas.width, landmarks[153].y * canvas.height]
+                  [landmarks[160].x * canvas.width, landmarks[160].y * canvas.height],
+                  [landmarks[158].x * canvas.width, landmarks[158].y * canvas.height],
+                  [landmarks[133].x * canvas.width, landmarks[133].y * canvas.height],
+                  [landmarks[153].x * canvas.width, landmarks[153].y * canvas.height],
+                  [landmarks[144].x * canvas.width, landmarks[144].y * canvas.height]
                 ];
 
                 const rightEyeLandmarks = [
                   [landmarks[362].x * canvas.width, landmarks[362].y * canvas.height],
-                  [landmarks[382].x * canvas.width, landmarks[382].y * canvas.height],
-                  [landmarks[381].x * canvas.width, landmarks[381].y * canvas.height],
-                  [landmarks[380].x * canvas.width, landmarks[380].y * canvas.height],
-                  [landmarks[374].x * canvas.width, landmarks[374].y * canvas.height],
-                  [landmarks[373].x * canvas.width, landmarks[373].y * canvas.height]
+                  [landmarks[385].x * canvas.width, landmarks[385].y * canvas.height],
+                  [landmarks[387].x * canvas.width, landmarks[387].y * canvas.height],
+                  [landmarks[263].x * canvas.width, landmarks[263].y * canvas.height],
+                  [landmarks[373].x * canvas.width, landmarks[373].y * canvas.height],
+                  [landmarks[380].x * canvas.width, landmarks[380].y * canvas.height]
                 ];
 
                 // Calculate EAR for both eyes
@@ -151,16 +159,22 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
               }
             }
           }
+          
+          isProcessing = false;
         });
 
         faceMeshRef.current = faceMesh;
 
-        // Initialize camera
+        // Initialize camera with error handling
         if (videoRef.current) {
           const camera = new MediaPipeCamera(videoRef.current, {
             onFrame: async () => {
-              if (videoRef.current) {
-                await faceMesh.send({ image: videoRef.current });
+              if (videoRef.current && faceMeshRef.current && !isProcessing) {
+                try {
+                  await faceMesh.send({ image: videoRef.current });
+                } catch (err) {
+                  console.warn('Face mesh processing error:', err);
+                }
               }
             },
             width: 640,
@@ -172,7 +186,8 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
           setIsLoading(false);
         }
       } catch (err) {
-        setError('Failed to initialize camera: ' + (err as Error).message);
+        console.error('Camera initialization error:', err);
+        setError('Failed to initialize camera. Please check camera permissions and refresh the page.');
         setIsLoading(false);
       }
     };
@@ -182,7 +197,18 @@ export const Camera: React.FC<CameraProps> = ({ onFaceData }) => {
     return () => {
       // Cleanup
       if (cameraRef.current) {
-        cameraRef.current.stop();
+        try {
+          cameraRef.current.stop();
+        } catch (err) {
+          console.warn('Camera cleanup error:', err);
+        }
+      }
+      if (faceMeshRef.current) {
+        try {
+          faceMeshRef.current.close();
+        } catch (err) {
+          console.warn('Face mesh cleanup error:', err);
+        }
       }
     };
   }, [onFaceData]);

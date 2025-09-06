@@ -16,27 +16,29 @@ export const LivenessStatus: React.FC<LivenessStatusProps> = ({ faceData }) => {
   const [lastBlinkTime, setLastBlinkTime] = useState(0);
   const [blinkCount, setBlinkCount] = useState(0);
 
+  // Handle blink detection and history tracking
   useEffect(() => {
     const now = Date.now();
     
-    // Track blink history for liveness validation
     if (faceData.isBlinking && now - lastBlinkTime > 300) {
       setLastBlinkTime(now);
       setBlinkCount(prev => prev + 1);
-      setBlinkHistory(prev => [...prev.slice(-10), true]); // Keep last 10 blinks
-    } else if (!faceData.isBlinking) {
+      setBlinkHistory(prev => [...prev.slice(-10), true]);
+    } else if (!faceData.isBlinking && faceData.landmarks.length > 0) {
       setBlinkHistory(prev => [...prev.slice(-10), false]);
     }
+  }, [faceData.isBlinking, faceData.landmarks.length]); // Removed lastBlinkTime dependency
 
-    // Determine if user is real based on multiple factors
-    const hasRecentBlinks = blinkHistory.slice(-20).some(blink => blink);
+  // Calculate liveness status separately
+  useEffect(() => {
     const hasFaceDetection = faceData.landmarks.length > 0;
     const hasValidHeadPose = faceData.headPoseValid;
+    const hasRecentBlinks = blinkHistory.slice(-5).some(blink => blink);
     const hasEnoughBlinks = blinkCount >= 2;
 
     const realUser = hasFaceDetection && hasValidHeadPose && (hasRecentBlinks || hasEnoughBlinks);
     setIsRealUser(realUser);
-  }, [faceData, blinkHistory, lastBlinkTime, blinkCount]);
+  }, [faceData.landmarks.length, faceData.headPoseValid, blinkHistory, blinkCount]);
 
   const resetDetection = () => {
     setBlinkHistory([]);
