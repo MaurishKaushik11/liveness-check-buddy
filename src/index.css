@@ -8,29 +8,48 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 13% 8%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 13% 10%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 13% 10%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 197 100% 50%;
+    --primary-foreground: 220 13% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 13% 16%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 13% 16%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 197 100% 50%;
+    --accent-foreground: 220 13% 8%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+
+    /* Custom design system tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(197 100% 50%), hsl(217 91% 60%));
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%), hsl(158 64% 52%));
+    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%), hsl(348 83% 47%));
+    --gradient-background: linear-gradient(135deg, hsl(220 13% 8%), hsl(220 13% 12%));
+    
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+    
+    --danger: 0 84% 60%;
+    --danger-foreground: 210 40% 98%;
+    
+    --tech-glow: 197 100% 50%;
+    --tech-glow-soft: 217 91% 60%;
+    
+    --shadow-glow: 0 0 40px hsl(var(--tech-glow) / 0.3);
+    --shadow-glow-success: 0 0 30px hsl(var(--success) / 0.4);
+    --shadow-glow-danger: 0 0 30px hsl(var(--danger) / 0.4);
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
@@ -56,28 +75,28 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 220 13% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 220 13% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 220 13% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 197 100% 50%;
+    --primary-foreground: 220 13% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 220 13% 16%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 220 13% 16%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 197 100% 50%;
+    --accent-foreground: 220 13% 8%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 217.2 32.6% 17.5%;
@@ -101,5 +120,21 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    background: var(--gradient-background);
+    min-height: 100vh;
+  }
+  
+  .status-real {
+    background: var(--gradient-success);
+    box-shadow: var(--shadow-glow-success);
+  }
+  
+  .status-spoof {
+    background: var(--gradient-danger);  
+    box-shadow: var(--shadow-glow-danger);
+  }
+  
+  .tech-glow {
+    box-shadow: var(--shadow-glow);
   }
 }
